@@ -48,6 +48,7 @@ type NavItem = {
   perm: string | null;
   badge?: 'pending' | 'notices' | 'support';
   ai?: boolean;
+  beta?: boolean;
 };
 
 const NAV_DEST: Record<string, NavItem> = {
@@ -56,7 +57,7 @@ const NAV_DEST: Record<string, NavItem> = {
   calendar:     { to: '/calendar',   icon: Calendar,        label: 'Agenda',        perm: 'calendar.view' },
   evolucoes:    { to: '/evolucoes',  icon: NotebookPen,     label: 'Evoluções',     perm: 'evolutions.view' },
   tasks:        { to: '/tasks',      icon: ClipboardList,   label: 'Tarefas',       perm: 'tasks.view' },
-  telechamadas: { to: '/telechamadas', icon: Video,         label: 'Telechamadas',  perm: null },
+  telechamadas: { to: '/telechamadas', icon: Video,         label: 'Telechamadas',  perm: null, beta: true },
   clinics:      { to: '/clinics',    icon: Building2,       label: 'Clínicas',      perm: 'clinics.view' },
   financial:    { to: '/financial',  icon: DollarSign,      label: 'Financeiro',    perm: 'financial.view' },
   reports:      { to: '/reports',    icon: BarChart3,       label: 'Relatórios',    perm: 'reports.view' },
@@ -227,7 +228,7 @@ export function AppSidebar() {
               {group.label}
             </div>
             <div className="space-y-0.5">
-              {group.items.map(({ to, icon: Icon, label, badge, locked, ai }) => {
+              {group.items.map(({ to, icon: Icon, label, badge, locked, ai, beta }) => {
                 const isActive = !locked && (location.pathname === to ||
                   (to !== '/' && location.pathname.startsWith(to)));
                 const badgeCount = badge === 'notices' ? unreadCount : badge === 'support' ? supportUnread : badge === 'pending' ? pendingCount : 0;
@@ -276,6 +277,14 @@ export function AppSidebar() {
                     )}>
                       {label}
                     </span>
+                    {beta && (
+                      <span className={cn(
+                        'text-[9px] font-bold tracking-wider px-1.5 py-0.5 rounded',
+                        isActive ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-warning/10 text-warning'
+                      )}>
+                        BETA
+                      </span>
+                    )}
                     {ai && (
                       <span className={cn(
                         'text-[9px] font-bold tracking-wider px-1.5 py-0.5 rounded',
