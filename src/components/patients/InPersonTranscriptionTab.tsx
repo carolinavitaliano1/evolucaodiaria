@@ -275,7 +275,7 @@ export function InPersonTranscriptionTab({ patientId, patientName, clinicId, cli
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <FileAudio className="w-4 h-4 text-primary" />
-            Transcrição de sessão presencial
+            Transcrição de sessão presencial <span className="text-[10px] align-top font-bold tracking-wider px-1.5 py-0.5 rounded bg-warning/10 text-warning">BETA</span>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
