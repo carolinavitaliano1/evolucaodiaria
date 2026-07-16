@@ -203,6 +203,7 @@ export function TelehealthSessionsList({ patientId, patientName, clinicId, thera
       <div className="flex items-center justify-between">
         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
           {therapySessionId ? 'Teleatendimento desta sessão' : 'Histórico'}
+          <span className="ml-1.5 text-[9px] font-bold tracking-wider px-1 py-0.5 rounded bg-warning/10 text-warning">BETA</span>
         </p>
         <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={load}>
           <RefreshCcw className="w-3 h-3" /> Atualizar
