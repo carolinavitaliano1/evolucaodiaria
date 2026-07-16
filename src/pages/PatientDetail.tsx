@@ -2402,8 +2402,8 @@ export default function PatientDetail() {
         { id: 'evolutions', label: 'Evoluções', icon: TrendingUp, desc: 'Registro diário de sessões' },
         { id: 'attendance', label: 'Frequência', icon: ClipboardList, desc: 'Presenças, faltas e reposições' },
         { id: 'session', label: 'Sessão Terapêutica', icon: Brain, desc: 'Roteiro e metas da sessão' },
-        { id: 'transcricao', label: 'Transcrição', icon: Mic, desc: 'Áudio da sessão em texto' },
-        { id: 'teleatendimento', label: 'Teleatendimento', icon: Video, desc: 'Sala online e confirmações' },
+        { id: 'transcricao', label: 'Transcrição', icon: Mic, desc: 'Áudio da sessão em texto', beta: true },
+        { id: 'teleatendimento', label: 'Teleatendimento', icon: Video, desc: 'Sala online e confirmações', beta: true },
       ],
     },
     {
