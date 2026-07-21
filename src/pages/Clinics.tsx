@@ -892,7 +892,7 @@ export default function Clinics() {
             /* ——— Densidade LISTA (linhas) ——— */
             <div className="space-y-1.5">
               {filteredClinics.map((clinic) => {
-                const patientCount = patients.filter(p => p.clinicId === clinic.id).length;
+                const patientCount = patients.filter(p => p.clinicId === clinic.id && isPatientActiveOn(p)).length;
                 const meta = typeMeta(clinic.type);
                 return (
                   <div
@@ -940,7 +940,7 @@ export default function Clinics() {
             /* ——— Densidade CARDS (e Clínica Pro) ——— */
             <div className={cn('grid gap-3', !isClinicaProOnly && 'sm:grid-cols-2 lg:grid-cols-3')}>
               {filteredClinics.map((clinic) => {
-                const patientCount = patients.filter(p => p.clinicId === clinic.id).length;
+                const patientCount = patients.filter(p => p.clinicId === clinic.id && isPatientActiveOn(p)).length;
                 const meta = typeMeta(clinic.type);
                 return (
                   <div
