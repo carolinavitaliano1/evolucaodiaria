@@ -24,6 +24,7 @@ import {
   Layers,
   Video,
   Search,
+  GraduationCap,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -58,6 +59,7 @@ const NAV_DEST: Record<string, NavItem> = {
   evolucoes:    { to: '/evolucoes',  icon: NotebookPen,     label: 'Evoluções',     perm: 'evolutions.view' },
   tasks:        { to: '/tasks',      icon: ClipboardList,   label: 'Tarefas',       perm: 'tasks.view' },
   telechamadas: { to: '/telechamadas', icon: Video,         label: 'Telechamadas',  perm: null, beta: true },
+  supervisao:   { to: '/supervisao', icon: GraduationCap,   label: 'Supervisão',    perm: null },
   clinics:      { to: '/clinics',    icon: Building2,       label: 'Clínicas',      perm: 'clinics.view' },
   financial:    { to: '/financial',  icon: DollarSign,      label: 'Financeiro',    perm: 'financial.view' },
   reports:      { to: '/reports',    icon: BarChart3,       label: 'Relatórios',    perm: 'reports.view' },
@@ -75,7 +77,7 @@ const NAV_DEST: Record<string, NavItem> = {
 
 const NAV_GROUPS: { label: string; items: string[] }[] = [
   { label: 'Início',         items: ['dashboard'] },
-  { label: 'Atendimento',    items: ['patients', 'calendar', 'evolucoes', 'tasks', 'telechamadas'] },
+  { label: 'Atendimento',    items: ['patients', 'calendar', 'evolucoes', 'tasks', 'telechamadas', 'supervisao'] },
   { label: 'Gestão',         items: ['clinics', 'financial', 'reports', 'mural'] },
   { label: 'Inteligência',   items: ['aiReports', 'docIa'] },
   { label: 'Conta & Ajuda',  items: ['profile', 'modulos', 'pricing', 'install', 'suporte', 'admin'] },
