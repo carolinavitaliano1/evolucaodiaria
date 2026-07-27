@@ -40,7 +40,7 @@ export function EspecialidadesTab({ patientId }: Props) {
   return (
     <Tabs value={active} onValueChange={(v) => setActive(v as ModuleId)} className="space-y-4">
       <TabsList className="w-full bg-transparent h-auto p-0 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-        {SPECIALTY_MODULES.map((m) => {
+        {SPECIALTY_MODULES.filter((m) => m.id !== 'supervisao').map((m) => {
           const Icon = m.icon;
           const isComingSoon = m.status === 'coming_soon';
           return (
@@ -59,7 +59,7 @@ export function EspecialidadesTab({ patientId }: Props) {
         })}
       </TabsList>
 
-      {SPECIALTY_MODULES.map((m) => (
+      {SPECIALTY_MODULES.filter((m) => m.id !== 'supervisao').map((m) => (
         <TabsContent key={m.id} value={m.id}>
           <ModuleContent patientId={patientId} moduleId={m.id} />
         </TabsContent>

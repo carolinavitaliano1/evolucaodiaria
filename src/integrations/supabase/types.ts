@@ -4232,6 +4232,339 @@ export type Database = {
         }
         Relationships: []
       }
+      supervisees: {
+        Row: {
+          approach: string | null
+          avatar_url: string | null
+          council_registration: string | null
+          created_at: string
+          education: string | null
+          email: string | null
+          end_date: string | null
+          hours_goal: number | null
+          id: string
+          link_type: string
+          member_id: string | null
+          name: string
+          notes: string | null
+          payment_due_day: number | null
+          payment_type: string
+          payment_value: number | null
+          recurrence_frequency: string | null
+          recurrence_time: string | null
+          recurrence_weekdays: string[] | null
+          start_date: string | null
+          status: string
+          updated_at: string
+          user_id: string
+          whatsapp: string | null
+        }
+        Insert: {
+          approach?: string | null
+          avatar_url?: string | null
+          council_registration?: string | null
+          created_at?: string
+          education?: string | null
+          email?: string | null
+          end_date?: string | null
+          hours_goal?: number | null
+          id?: string
+          link_type?: string
+          member_id?: string | null
+          name: string
+          notes?: string | null
+          payment_due_day?: number | null
+          payment_type?: string
+          payment_value?: number | null
+          recurrence_frequency?: string | null
+          recurrence_time?: string | null
+          recurrence_weekdays?: string[] | null
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+          whatsapp?: string | null
+        }
+        Update: {
+          approach?: string | null
+          avatar_url?: string | null
+          council_registration?: string | null
+          created_at?: string
+          education?: string | null
+          email?: string | null
+          end_date?: string | null
+          hours_goal?: number | null
+          id?: string
+          link_type?: string
+          member_id?: string | null
+          name?: string
+          notes?: string | null
+          payment_due_day?: number | null
+          payment_type?: string
+          payment_value?: number | null
+          recurrence_frequency?: string | null
+          recurrence_time?: string | null
+          recurrence_weekdays?: string[] | null
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          whatsapp?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supervisees_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "organization_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supervision_case_notes: {
+        Row: {
+          created_at: string
+          date: string
+          hypotheses: string | null
+          id: string
+          notes: string | null
+          patient_id: string
+          recommendations: string | null
+          risks: string | null
+          session_id: string | null
+          supervisee_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date?: string
+          hypotheses?: string | null
+          id?: string
+          notes?: string | null
+          patient_id: string
+          recommendations?: string | null
+          risks?: string | null
+          session_id?: string | null
+          supervisee_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          hypotheses?: string | null
+          id?: string
+          notes?: string | null
+          patient_id?: string
+          recommendations?: string | null
+          risks?: string | null
+          session_id?: string | null
+          supervisee_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supervision_case_notes_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supervision_case_notes_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "supervision_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supervision_case_notes_supervisee_id_fkey"
+            columns: ["supervisee_id"]
+            isOneToOne: false
+            referencedRelation: "supervisees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supervision_goals: {
+        Row: {
+          competency: string
+          created_at: string
+          due_date: string | null
+          feedback: string | null
+          goal: string | null
+          id: string
+          score: number | null
+          status: string
+          supervisee_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          competency: string
+          created_at?: string
+          due_date?: string | null
+          feedback?: string | null
+          goal?: string | null
+          id?: string
+          score?: number | null
+          status?: string
+          supervisee_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          competency?: string
+          created_at?: string
+          due_date?: string | null
+          feedback?: string | null
+          goal?: string | null
+          id?: string
+          score?: number | null
+          status?: string
+          supervisee_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supervision_goals_supervisee_id_fkey"
+            columns: ["supervisee_id"]
+            isOneToOne: false
+            referencedRelation: "supervisees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supervision_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          due_date: string | null
+          id: string
+          notes: string | null
+          paid_at: string | null
+          payment_method: string | null
+          reference_month: number | null
+          reference_year: number | null
+          status: string
+          supervisee_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          notes?: string | null
+          paid_at?: string | null
+          payment_method?: string | null
+          reference_month?: number | null
+          reference_year?: number | null
+          status?: string
+          supervisee_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          notes?: string | null
+          paid_at?: string | null
+          payment_method?: string | null
+          reference_month?: number | null
+          reference_year?: number | null
+          status?: string
+          supervisee_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supervision_payments_supervisee_id_fkey"
+            columns: ["supervisee_id"]
+            isOneToOne: false
+            referencedRelation: "supervisees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supervision_sessions: {
+        Row: {
+          attachments: Json
+          attendance_status: string
+          content: string | null
+          created_at: string
+          date: string
+          duration_minutes: number
+          end_time: string | null
+          ethics_notes: string | null
+          format: string
+          id: string
+          modality: string
+          referrals: string | null
+          stamp_id: string | null
+          start_time: string | null
+          supervisee_id: string
+          topics: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attachments?: Json
+          attendance_status?: string
+          content?: string | null
+          created_at?: string
+          date: string
+          duration_minutes?: number
+          end_time?: string | null
+          ethics_notes?: string | null
+          format?: string
+          id?: string
+          modality?: string
+          referrals?: string | null
+          stamp_id?: string | null
+          start_time?: string | null
+          supervisee_id: string
+          topics?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attachments?: Json
+          attendance_status?: string
+          content?: string | null
+          created_at?: string
+          date?: string
+          duration_minutes?: number
+          end_time?: string | null
+          ethics_notes?: string | null
+          format?: string
+          id?: string
+          modality?: string
+          referrals?: string | null
+          stamp_id?: string | null
+          start_time?: string | null
+          supervisee_id?: string
+          topics?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supervision_sessions_supervisee_id_fkey"
+            columns: ["supervisee_id"]
+            isOneToOne: false
+            referencedRelation: "supervisees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       support_chat_sessions: {
         Row: {
           closed_at: string

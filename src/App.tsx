@@ -59,6 +59,7 @@ const InstallApp = lazyWithReload(() => import("./pages/InstallApp"));
 const Mural = lazyWithReload(() => import("./pages/Mural"));
 const Team = lazyWithReload(() => import("./pages/Team"));
 const Modules = lazyWithReload(() => import("./pages/Modules"));
+const Supervision = lazyWithReload(() => import("./pages/Supervision"));
 const MyCommissions = lazyWithReload(() => import("./pages/MyCommissions"));
 const Support = lazyWithReload(() => import("./pages/Support"));
 const AdminSupport = lazyWithReload(() => import("./pages/AdminSupport"));
@@ -187,6 +188,7 @@ const App = () => (
                     <Route path="/mural" element={<Mural />} />
                     <Route path="/team" element={<Team />} />
                     <Route path="/modulos" element={<Modules />} />
+                    <Route path="/supervisao" element={<Supervision />} />
                     <Route path="/minhas-comissoes" element={<MyCommissions />} />
                     <Route path="/suporte" element={<Support />} />
                     <Route path="/admin/suporte" element={<AdminSupport />} />

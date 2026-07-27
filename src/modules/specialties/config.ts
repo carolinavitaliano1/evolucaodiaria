@@ -1,6 +1,13 @@
-import { School, Brain, Ear, Activity, Salad, Puzzle, type LucideIcon } from 'lucide-react';
+import { School, Brain, Ear, Activity, Salad, Puzzle, GraduationCap, type LucideIcon } from 'lucide-react';
 
-export type ModuleId = 'psicopedagogo' | 'psicologo' | 'fono' | 'psicomotricista' | 'nutricionista' | 'to';
+export type ModuleId =
+  | 'psicopedagogo'
+  | 'psicologo'
+  | 'fono'
+  | 'psicomotricista'
+  | 'nutricionista'
+  | 'to'
+  | 'supervisao';
 
 export interface SpecialtyModule {
   id: ModuleId;
@@ -16,6 +23,43 @@ export interface SpecialtyModule {
 }
 
 export const SPECIALTY_MODULES: SpecialtyModule[] = [
+  {
+    id: 'supervisao',
+    label: 'Supervisão Clínica',
+    shortLabel: 'Superv.',
+    icon: GraduationCap,
+    color: 'text-sky-600',
+    price: 39,
+    description: 'Para quem supervisiona outros profissionais e estagiários',
+    status: 'available',
+    features: [
+      {
+        title: 'Supervisionandos & Sessões',
+        items: [
+          'Cadastro de supervisionandos externos ou da equipe',
+          'Registro por sessão com temas, conduta e encaminhamentos',
+          'Modalidade individual/grupo e formato online/presencial',
+          'Controle de presença, falta e remarcação',
+        ],
+      },
+      {
+        title: 'Horas & Declarações',
+        items: [
+          'Contador automático de horas por modalidade',
+          'Meta de horas com barra de progresso',
+          'Declaração de supervisão em PDF com assinatura e carimbo',
+        ],
+      },
+      {
+        title: 'Plano & Financeiro',
+        items: [
+          'Metas por competência com nota e feedback',
+          'Cobrança por sessão ou mensalidade',
+          'Controle de pagos, pendentes e atrasados',
+        ],
+      },
+    ],
+  },
   {
     id: 'psicopedagogo',
     label: 'Psicopedagogia',

@@ -1,53 +1,63 @@
-## Objetivo
+## Módulo de Supervisão Clínica
 
-No modal **Editar Clínica** (Contratante), permitir alterar o valor de repasse **a partir de uma data escolhida**. A partir dessa data, o Financeiro passa a calcular sessões pelo novo valor; meses anteriores continuam com o valor antigo.
+Novo módulo add-on (R$ 39/mês, incluído nos planos Pro/Clínica Pro como os demais) para profissionais que prestam supervisão a outros profissionais/estagiários.
 
-## O que muda
+### 1. Área própria "Supervisão" no menu
 
-### 1. Banco — nova tabela de histórico
-- `clinic_payment_history` com: `clinic_id`, `effective_from` (date), `payment_type`, `payment_amount`, `created_at`.
-- A cada alteração de repasse via UI, gravamos uma linha aqui (não sobrescreve, vira histórico).
-- Ao criar a tabela, fazemos um seed automático: para cada clínica existente, insere uma linha com `effective_from = '2000-01-01'` e o `payment_amount` atual da clínica (preserva o passado).
+Nova página `/supervisao` com lista de **supervisionandos** (parecida com Pacientes):
 
-### 2. Banco — cálculo respeitando histórico
-Atualizar `get_patient_monthly_revenue` para, em cada sessão (evolução), resolver o valor nesta ordem:
-1. Procedimento do agendamento (mantém comportamento atual).
-2. Pacote do agendamento (mantém).
-3. Se o paciente é de uma clínica Contratante com modelo "Por Sessão": valor da clínica vigente na **data da evolução**, lido de `clinic_payment_history` (linha mais recente com `effective_from <= date`).
-4. Fallback: `patients.payment_value`.
+- Cadastro: nome, e-mail, WhatsApp, formação, conselho/registro (CRP, CREFITO...), abordagem, tipo de vínculo (**externo** ou **membro da equipe** — neste caso vinculado a `organization_members`), início, status (ativo/encerrado).
+- Ficha do supervisionando com abas: Sessões, Plano de Desenvolvimento, Horas & Certificado, Financeiro, Casos, Documentos.
 
-Isso garante que mudanças futuras nunca alterem retroativamente meses anteriores.
+### 2. Sessões de supervisão
 
-### 3. UI — EditClinicDialog
-Na seção **Pagamento**, quando tipo for "Contratante" e "Por Sessão", adicionar bloco colapsável:
+- Data, hora início/fim (duração calculada automaticamente), modalidade (individual / grupo / online / presencial).
+- Temas discutidos, casos abordados, encaminhamentos/tarefas para o supervisionando, observações de conduta ética.
+- Presença: presente / falta / falta cobrada / remarcada (mesmo padrão de status usado em evoluções).
+- Anexos e assinatura/carimbo do supervisor (reaproveita `stamps`).
+- Geração de texto/resumo com IA (Lovable AI Gateway), no mesmo padrão das evoluções.
+- Exportação em PDF do registro da sessão.
 
-```text
-[ Alterar valor de repasse a partir de uma data ▼ ]
-  Data de início: [__/__/____]
-  Novo valor (R$): [_____]
-  [ Aplicar alteração ]
-  
-  Histórico:
-  • 01/06/2026 — R$ 40,00
-  • 01/01/2025 — R$ 45,00
-```
+### 3. Plano de desenvolvimento do supervisionando
 
-Ao clicar "Aplicar alteração":
-- Insere linha em `clinic_payment_history`.
-- Atualiza `clinics.payment_amount` para o novo valor (vira o valor "vigente" mostrado nos cards).
-- **Não** mexe em `patients.payment_value` automaticamente (remove a propagação que adicionamos antes).
+- Metas por competência (avaliação clínica, manejo de caso, escrita de documentos, ética, teoria) com prazo e status.
+- Escala 0–5 por competência, com gráfico radar de evolução entre avaliações periódicas.
+- Checklist de objetivos atingidos e feedback escrito do supervisor.
 
-### 4. Limpeza do que fizemos antes
-- Remover do `EditClinicDialog` o bloco que sincronizava `patients.payment_value` em massa (introduzido na rodada anterior).
-- Reverter pacientes do Sensum para R$ 45 (restaurando o passado) e inserir linha no histórico com `effective_from = 2026-06-01, payment_amount = 40`. Junho passará a usar 40, maio volta para 45.
+### 4. Horas e certificados
 
-## Como o usuário vai usar
-1. Abrir clínica Sensum → Editar → seção Pagamento → "Alterar valor de repasse a partir de uma data".
-2. Selecionar 01/06/2026 e digitar 40 → Aplicar.
-3. Financeiro de maio mostra R$ 45/sessão; junho em diante mostra R$ 40/sessão. Sem precisar tocar em paciente algum.
+- Contador automático de horas acumuladas (soma das sessões com presença), separado por modalidade (individual/grupo).
+- Meta de horas configurável (ex.: exigência do conselho) com barra de progresso.
+- Emissão de **Declaração/Certificado de Supervisão** em PDF A4 com carimbo e assinatura, listando período, total de horas e detalhamento por sessão.
 
-## Notas técnicas
-- A migration cria a tabela com GRANTs e RLS (membros da organização da clínica podem ler/escrever; owner via `is_clinic_org_owner`).
-- A função `get_patient_monthly_revenue` é alterada via `CREATE OR REPLACE FUNCTION` na mesma migration.
-- O seed inicial garante que clínicas/pacientes existentes não tenham regressão (toda data anterior à primeira alteração resolve para o `payment_amount` que estava gravado).
-- O `EditClinicDialog` perde a auto-propagação para `patients.payment_value`; quem quiser sobrescrever um paciente específico continua editando o cadastro do paciente normalmente (esse override individual continua vencendo o histórico da clínica, regra mantida).
+### 5. Financeiro e agenda
+
+- Valor por sessão ou mensalidade por supervisionando; dia de vencimento.
+- Registro de pagamentos e status (pago/pendente/atrasado), no padrão de `patient_payment_records`.
+- Recorrência semanal/quinzenal com horário, alimentando o Calendário existente e o alerta de sessões do Dashboard.
+- Receita de supervisão entra como categoria própria nos Relatórios/Financeiro (não mistura com repasse de clínica).
+
+### 6. Supervisão de casos (aba no paciente)
+
+- Nova aba "Supervisão" no prontuário do paciente (dentro de Especialidades, padrão atual dos módulos).
+- Registro de discussão do caso: hipóteses, condutas sugeridas, riscos identificados, supervisor responsável e data.
+- Vínculo opcional com a sessão de supervisão correspondente e com o supervisionando que apresentou o caso.
+- Visível apenas para supervisor e supervisionando vinculado (RLS), nunca no Portal do Paciente.
+
+### Detalhes técnicos
+
+- `src/modules/specialties/config.ts`: novo módulo `supervisao` (ícone `UserCheck`, `status: 'available'`, R$ 39, `stripePriceId` novo a criar no Stripe) e adicionar ao `MODULE_PRICES` de `create-module-checkout`.
+- Acesso via `has_module_access('supervisao')` — nenhuma mudança na função é necessária.
+- Novas tabelas (todas com GRANTs + RLS por `user_id` do supervisor, e leitura para o supervisionando quando ele for membro da organização):
+  - `supervisees` — dados do supervisionando, `member_id` opcional, valores e recorrência.
+  - `supervision_sessions` — data, horários, modalidade, presença, conteúdo, IA, carimbo.
+  - `supervision_goals` — metas/competências, escala, status.
+  - `supervision_payments` — cobranças e pagamentos.
+  - `supervision_case_notes` — discussão de caso ligada a `patients`.
+- Rota `/supervisao` + item no `AppSidebar` e `MobileNav`, exibido apenas com acesso ao módulo.
+- PDFs reaproveitam o padrão de `generateAIDocumentPdf` / `generateReportPdf` (A4, carimbo, texto justificado).
+
+### Entrega sugerida em duas fases
+
+1. **Fase 1**: módulo + tabelas + área `/supervisao` com supervisionandos, sessões, horas e certificado em PDF.
+2. **Fase 2**: plano de desenvolvimento com radar, financeiro/agenda recorrente e aba de supervisão de caso no paciente.
