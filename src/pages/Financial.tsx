@@ -1308,7 +1308,7 @@ export default function Financial() {
     URL.revokeObjectURL(url);
   };
 
-  const grandTotal = totalRevenue + linkedServicesRevenue + standaloneRevenue;
+  const grandTotal = totalRevenue + linkedServicesRevenue + standaloneRevenue + supervisionRevenue;
 
   // Bruto x Líquido: aplica desconto da clínica (discountPercentage) sobre o faturamento de cada clínica.
   // Serviços particulares (avulsos e vinculados) não sofrem desconto.
@@ -1317,7 +1317,7 @@ export default function Financial() {
     const pct = s.clinic.discountPercentage || 0;
     return sum + s.revenue * (1 - pct / 100);
   }, 0);
-  const grandNetTotal = netClinicTotal + linkedServicesRevenue + standaloneRevenue;
+  const grandNetTotal = netClinicTotal + linkedServicesRevenue + standaloneRevenue + supervisionRevenue;
   const totalDiscount = grossClinicTotal - netClinicTotal;
 
   // Paid total for patients in PROPRIA clinics (tracked individually)
@@ -1337,7 +1337,7 @@ export default function Financial() {
     return sum + (cr.amount > 0 ? cr.amount : clinicRevenue);
   }, 0);
 
-  const paidTotal = paidPatientTotal + clinicPaidTotal;
+  const paidTotal = paidPatientTotal + clinicPaidTotal + supervisionPaid;
   const pendingTotal = Math.max(0, grandTotal - paidTotal);
   const pendingCount = allPatientStats.filter(({ pr }) => !pr?.paid).length;
 
@@ -1352,6 +1352,7 @@ export default function Financial() {
     { label: 'Sessões em Grupo', sub: 'Grupos terapêuticos', count: 'Grupos', value: revenueGroup, color: 'hsl(280 55% 55%)', icon: Users },
     { label: 'Receita Fixa', sub: 'Contratos mensais', count: 'Mensalidades', value: revenueFixo, color: 'hsl(32 85% 50%)', icon: Repeat },
     { label: 'Serviços Particulares', sub: 'Fora de clínica', count: `${monthlyPrivateAppointments.length} lançamentos`, value: privateServicesTotal, color: 'hsl(190 70% 45%)', icon: Briefcase },
+    { label: 'Receita Supervisão', sub: 'Supervisão clínica', count: `${supervisionSupervisees} supervisionando(s) · ${supervisionSessions} sessões`, value: supervisionRevenue, color: 'hsl(265 60% 50%)', icon: GraduationCap },
     { label: 'Atendimentos Avulsos', sub: 'Sem clínica', count: 'Pontuais', value: standaloneRevenue, color: 'hsl(240 5% 50%)', icon: Wallet },
   ].filter(s => s.value > 0);
 
