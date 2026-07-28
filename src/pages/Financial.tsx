@@ -21,6 +21,8 @@ import { type GroupBillingMap, type GroupMemberPaymentMap } from '@/utils/groupF
 import { generateClinicInternalStatementPdf } from '@/utils/generateClinicInternalStatementPdf';
 import { isPatientActiveOn } from '@/utils/dateHelpers';
 import { loadAppointmentValueMap } from '@/utils/appointmentValueMap';
+import { useSupervisionRevenue } from '@/modules/supervision/useSupervisionRevenue';
+import { GraduationCap } from 'lucide-react';
 
 type PaymentStatusFilter = 'all' | 'paid' | 'pending';
 
@@ -83,6 +85,14 @@ export default function Financial() {
   const selectedMonth = selectedDate.getMonth();
   const selectedYear = selectedDate.getFullYear();
   const monthName = format(selectedDate, "MMMM 'de' yyyy", { locale: ptBR });
+
+  // Receita do módulo de Supervisão (categoria própria no financeiro)
+  const {
+    revenue: supervisionRevenue,
+    paid: supervisionPaid,
+    sessionCount: supervisionSessions,
+    superviseeCount: supervisionSupervisees,
+  } = useSupervisionRevenue(selectedMonth, selectedYear);
 
   // Filters
   const [paymentStatusFilter, setPaymentStatusFilter] = useState<PaymentStatusFilter>('all');
@@ -280,7 +290,7 @@ export default function Financial() {
   const linkedServicesRevenue = linkedServiceAppointments
     .filter(a => a.status === 'concluído')
     .reduce((sum, a) => sum + (a.price || 0), 0);
-  const netRevenue = totalRevenue + linkedServicesRevenue + standaloneRevenue;
+  const netRevenue = totalRevenue + linkedServicesRevenue + standaloneRevenue + supervisionRevenue;
 
   // Revenue breakdown by session type (individual, fixo, group)
   const { revenueIndividualSession, revenueFixo, revenueGroup } = useMemo(() => {
@@ -632,8 +642,8 @@ export default function Financial() {
       // Faturamento Total = receita das clínicas + serviços vinculados a consultórios + serviços avulsos.
       // linkedServicesRevenue é somado pois calculateClinicRevenue (base de pdfGrossClinic) não o inclui,
       // mas "Receita Consultórios/Contratante" exibida no PDF já o inclui — mantendo coerência.
-      const pdfNetRevenue = pdfNetClinic + linkedServicesRevenue + standaloneRevenue;
-      const pdfGrossRevenue = pdfGrossClinic + linkedServicesRevenue + standaloneRevenue;
+      const pdfNetRevenue = pdfNetClinic + linkedServicesRevenue + standaloneRevenue + supervisionRevenue;
+      const pdfGrossRevenue = pdfGrossClinic + linkedServicesRevenue + standaloneRevenue + supervisionRevenue;
       const hasDiscount = pdfTotalDiscount > 0.005;
 
       const summaryItems = [
@@ -645,6 +655,7 @@ export default function Financial() {
         { label: 'Receita Consultórios',value: `R$ ${revenuePropriaClinicas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
         { label: 'Receita Contratante',      value: `R$ ${revenueContratante.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
         { label: 'Serviços Particulares',    value: `R$ ${standaloneRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
+        ...(supervisionRevenue > 0 ? [{ label: 'Receita Supervisão', value: `R$ ${supervisionRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` }] : []),
         ...(totalLoss > 0 ? [{ label: 'Perdas por Faltas', value: `- R$ ${totalLoss.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, loss: true }] : []),
         { label: 'Total de Atendimentos',    value: `${presentEvolutions.length}` },
         { label: 'Faltas Remuneradas',       value: `${paidAbsenceEvolutions.length}` },
@@ -683,8 +694,9 @@ export default function Financial() {
         { label: 'Mensalidades Fixas', value: revenueFixo, color: [40, 120, 180] as [number,number,number] },
         { label: 'Sessões em Grupo', value: revenueGroup, color: C.accent },
         { label: 'Serviços Particulares', value: totalServicesRevenue, color: C.green },
+        ...(supervisionRevenue > 0 ? [{ label: 'Supervisão Clínica', value: supervisionRevenue, color: [130, 90, 200] as [number, number, number] }] : []),
       ];
-      const breakdownTotal = revenueIndividualSession + revenueFixo + revenueGroup + totalServicesRevenue;
+      const breakdownTotal = revenueIndividualSession + revenueFixo + revenueGroup + totalServicesRevenue + supervisionRevenue;
 
       breakdownItems.forEach((item, idx) => {
         ensureSpace(16);
@@ -1298,7 +1310,7 @@ export default function Financial() {
     URL.revokeObjectURL(url);
   };
 
-  const grandTotal = totalRevenue + linkedServicesRevenue + standaloneRevenue;
+  const grandTotal = totalRevenue + linkedServicesRevenue + standaloneRevenue + supervisionRevenue;
 
   // Bruto x Líquido: aplica desconto da clínica (discountPercentage) sobre o faturamento de cada clínica.
   // Serviços particulares (avulsos e vinculados) não sofrem desconto.
@@ -1307,7 +1319,7 @@ export default function Financial() {
     const pct = s.clinic.discountPercentage || 0;
     return sum + s.revenue * (1 - pct / 100);
   }, 0);
-  const grandNetTotal = netClinicTotal + linkedServicesRevenue + standaloneRevenue;
+  const grandNetTotal = netClinicTotal + linkedServicesRevenue + standaloneRevenue + supervisionRevenue;
   const totalDiscount = grossClinicTotal - netClinicTotal;
 
   // Paid total for patients in PROPRIA clinics (tracked individually)
@@ -1327,7 +1339,7 @@ export default function Financial() {
     return sum + (cr.amount > 0 ? cr.amount : clinicRevenue);
   }, 0);
 
-  const paidTotal = paidPatientTotal + clinicPaidTotal;
+  const paidTotal = paidPatientTotal + clinicPaidTotal + supervisionPaid;
   const pendingTotal = Math.max(0, grandTotal - paidTotal);
   const pendingCount = allPatientStats.filter(({ pr }) => !pr?.paid).length;
 
@@ -1342,6 +1354,7 @@ export default function Financial() {
     { label: 'Sessões em Grupo', sub: 'Grupos terapêuticos', count: 'Grupos', value: revenueGroup, color: 'hsl(280 55% 55%)', icon: Users },
     { label: 'Receita Fixa', sub: 'Contratos mensais', count: 'Mensalidades', value: revenueFixo, color: 'hsl(32 85% 50%)', icon: Repeat },
     { label: 'Serviços Particulares', sub: 'Fora de clínica', count: `${monthlyPrivateAppointments.length} lançamentos`, value: privateServicesTotal, color: 'hsl(190 70% 45%)', icon: Briefcase },
+    { label: 'Receita Supervisão', sub: 'Supervisão clínica', count: `${supervisionSupervisees} supervisionando(s) · ${supervisionSessions} sessões`, value: supervisionRevenue, color: 'hsl(265 60% 50%)', icon: GraduationCap },
     { label: 'Atendimentos Avulsos', sub: 'Sem clínica', count: 'Pontuais', value: standaloneRevenue, color: 'hsl(240 5% 50%)', icon: Wallet },
   ].filter(s => s.value > 0);
 
