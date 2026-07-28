@@ -21,6 +21,8 @@ import { type GroupBillingMap, type GroupMemberPaymentMap } from '@/utils/groupF
 import { generateClinicInternalStatementPdf } from '@/utils/generateClinicInternalStatementPdf';
 import { isPatientActiveOn } from '@/utils/dateHelpers';
 import { loadAppointmentValueMap } from '@/utils/appointmentValueMap';
+import { useSupervisionRevenue } from '@/modules/supervision/useSupervisionRevenue';
+import { GraduationCap } from 'lucide-react';
 
 type PaymentStatusFilter = 'all' | 'paid' | 'pending';
 
@@ -83,6 +85,14 @@ export default function Financial() {
   const selectedMonth = selectedDate.getMonth();
   const selectedYear = selectedDate.getFullYear();
   const monthName = format(selectedDate, "MMMM 'de' yyyy", { locale: ptBR });
+
+  // Receita do módulo de Supervisão (categoria própria no financeiro)
+  const {
+    revenue: supervisionRevenue,
+    paid: supervisionPaid,
+    sessionCount: supervisionSessions,
+    superviseeCount: supervisionSupervisees,
+  } = useSupervisionRevenue(selectedMonth, selectedYear);
 
   // Filters
   const [paymentStatusFilter, setPaymentStatusFilter] = useState<PaymentStatusFilter>('all');
