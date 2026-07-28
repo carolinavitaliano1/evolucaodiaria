@@ -30,6 +30,7 @@ export const SPECIALTY_MODULES: SpecialtyModule[] = [
     icon: GraduationCap,
     color: 'text-sky-600',
     price: 39,
+    stripePriceId: 'price_1TyA57Dl2hex55TCBasBsot7',
     description: 'Para quem supervisiona outros profissionais e estagiários',
     status: 'available',
     features: [

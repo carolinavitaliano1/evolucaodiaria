@@ -13,6 +13,7 @@ const corsHeaders = {
 const MODULE_PRICES: Record<string, string> = {
   psicopedagogo: "price_1TaH8mDl2hex55TCgAZrPg9r",
   psicomotricista: "price_1TaI25Dl2hex55TCtn8gmcgX",
+  supervisao: "price_1TyA57Dl2hex55TCBasBsot7",
 };
 
 serve(async (req) => {
