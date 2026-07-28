@@ -290,7 +290,7 @@ export default function Financial() {
   const linkedServicesRevenue = linkedServiceAppointments
     .filter(a => a.status === 'concluído')
     .reduce((sum, a) => sum + (a.price || 0), 0);
-  const netRevenue = totalRevenue + linkedServicesRevenue + standaloneRevenue;
+  const netRevenue = totalRevenue + linkedServicesRevenue + standaloneRevenue + supervisionRevenue;
 
   // Revenue breakdown by session type (individual, fixo, group)
   const { revenueIndividualSession, revenueFixo, revenueGroup } = useMemo(() => {
@@ -642,8 +642,8 @@ export default function Financial() {
       // Faturamento Total = receita das clínicas + serviços vinculados a consultórios + serviços avulsos.
       // linkedServicesRevenue é somado pois calculateClinicRevenue (base de pdfGrossClinic) não o inclui,
       // mas "Receita Consultórios/Contratante" exibida no PDF já o inclui — mantendo coerência.
-      const pdfNetRevenue = pdfNetClinic + linkedServicesRevenue + standaloneRevenue;
-      const pdfGrossRevenue = pdfGrossClinic + linkedServicesRevenue + standaloneRevenue;
+      const pdfNetRevenue = pdfNetClinic + linkedServicesRevenue + standaloneRevenue + supervisionRevenue;
+      const pdfGrossRevenue = pdfGrossClinic + linkedServicesRevenue + standaloneRevenue + supervisionRevenue;
       const hasDiscount = pdfTotalDiscount > 0.005;
 
       const summaryItems = [
@@ -655,6 +655,7 @@ export default function Financial() {
         { label: 'Receita Consultórios',value: `R$ ${revenuePropriaClinicas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
         { label: 'Receita Contratante',      value: `R$ ${revenueContratante.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
         { label: 'Serviços Particulares',    value: `R$ ${standaloneRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` },
+        ...(supervisionRevenue > 0 ? [{ label: 'Receita Supervisão', value: `R$ ${supervisionRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` }] : []),
         ...(totalLoss > 0 ? [{ label: 'Perdas por Faltas', value: `- R$ ${totalLoss.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, loss: true }] : []),
         { label: 'Total de Atendimentos',    value: `${presentEvolutions.length}` },
         { label: 'Faltas Remuneradas',       value: `${paidAbsenceEvolutions.length}` },
@@ -693,8 +694,9 @@ export default function Financial() {
         { label: 'Mensalidades Fixas', value: revenueFixo, color: [40, 120, 180] as [number,number,number] },
         { label: 'Sessões em Grupo', value: revenueGroup, color: C.accent },
         { label: 'Serviços Particulares', value: totalServicesRevenue, color: C.green },
+        ...(supervisionRevenue > 0 ? [{ label: 'Supervisão Clínica', value: supervisionRevenue, color: [130, 90, 200] as [number, number, number] }] : []),
       ];
-      const breakdownTotal = revenueIndividualSession + revenueFixo + revenueGroup + totalServicesRevenue;
+      const breakdownTotal = revenueIndividualSession + revenueFixo + revenueGroup + totalServicesRevenue + supervisionRevenue;
 
       breakdownItems.forEach((item, idx) => {
         ensureSpace(16);
