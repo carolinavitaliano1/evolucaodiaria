@@ -99,14 +99,29 @@ export function generateSupervisionCertificate({
   );
   y += 22;
 
-  if (signatureImage) {
+  const lineY = y;
+
+  // Carimbo e assinatura ficam ACIMA da linha, centralizados
+  if (stampImage) {
     try {
-      doc.addImage(signatureImage, 'PNG', pageW / 2 - 25, y - 16, 50, 16);
+      const size = 30;
+      const offsetX = signatureImage ? 14 : 0;
+      doc.addImage(stampImage, 'PNG', pageW / 2 - size / 2 + offsetX, lineY - size - 1, size, size);
     } catch {
       /* imagem inválida — ignora */
     }
   }
-  doc.line(pageW / 2 - 40, y, pageW / 2 + 40, y);
+  if (signatureImage) {
+    try {
+      const w = 45;
+      const offsetX = stampImage ? -16 : 0;
+      doc.addImage(signatureImage, 'PNG', pageW / 2 - w / 2 + offsetX, lineY - 17, w, 16);
+    } catch {
+      /* imagem inválida — ignora */
+    }
+  }
+
+  doc.line(pageW / 2 - 40, lineY, pageW / 2 + 40, lineY);
   y += 6;
   doc.setFont('helvetica', 'bold');
   doc.text(supervisorName || 'Supervisor(a)', pageW / 2, y, { align: 'center' });
@@ -115,14 +130,6 @@ export function generateSupervisionCertificate({
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
     doc.text(supervisorRegistration, pageW / 2, y, { align: 'center' });
-  }
-
-  if (stampImage) {
-    try {
-      doc.addImage(stampImage, 'PNG', pageW / 2 + 45, y - 22, 32, 32);
-    } catch {
-      /* imagem inválida — ignora */
-    }
   }
 
   doc.save(`declaracao-supervisao-${supervisee.name.replace(/\s+/g, '-').toLowerCase()}.pdf`);
