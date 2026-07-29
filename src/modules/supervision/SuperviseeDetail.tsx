@@ -9,12 +9,13 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
-  Plus, Pencil, Trash2, FileDown, Clock, Target, DollarSign, NotebookPen, Loader2,
+  Plus, Pencil, Trash2, FileDown, Clock, Target, DollarSign, NotebookPen, Loader2, Receipt,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { SupervisionSessionDialog } from './SupervisionSessionDialog';
 import { generateSupervisionCertificate } from './generateSupervisionCertificate';
+import { generatePaymentReceiptPdf } from '@/utils/generatePaymentReceiptPdf';
 import {
   useSupervisionGoals, useSupervisionPayments, useSupervisionSessions,
 } from './useSupervision';
@@ -31,7 +32,7 @@ export function SuperviseeDetail({ supervisee }: { supervisee: Supervisee }) {
 
   const [sessionDialog, setSessionDialog] = useState(false);
   const [editing, setEditing] = useState<SupervisionSession | null>(null);
-  const [supervisor, setSupervisor] = useState<{ name: string; registration?: string }>({ name: '' });
+  const [supervisor, setSupervisor] = useState<{ name: string; registration?: string; cpf?: string | null; cbo?: string | null }>({ name: '' });
   const [stamps, setStamps] = useState<any[]>([]);
   const [stampId, setStampId] = useState<string>('none');
   const [exporting, setExporting] = useState(false);
@@ -42,12 +43,14 @@ export function SuperviseeDetail({ supervisee }: { supervisee: Supervisee }) {
       const uid = auth.user?.id;
       if (!uid) return;
       const [{ data: profile }, { data: stampRows }] = await Promise.all([
-        supabase.from('profiles').select('name, professional_id').eq('user_id', uid).maybeSingle(),
+        supabase.from('profiles').select('name, professional_id, cpf, cbo').eq('user_id', uid).maybeSingle(),
         supabase.from('stamps').select('id, name, stamp_image, signature_image, clinical_area, is_default').eq('user_id', uid).order('is_default', { ascending: false }),
       ]);
       setSupervisor({
         name: (profile as any)?.name || '',
         registration: (profile as any)?.professional_id || (stampRows?.[0] as any)?.clinical_area || undefined,
+        cpf: (profile as any)?.cpf || null,
+        cbo: (profile as any)?.cbo || null,
       });
       setStamps(stampRows || []);
       if (stampRows?.[0]) setStampId((stampRows[0] as any).id);
@@ -229,6 +232,9 @@ export function SuperviseeDetail({ supervisee }: { supervisee: Supervisee }) {
             billableSessions={stats.billable}
             onSave={savePayment}
             onRemove={removePayment}
+            supervisor={supervisor}
+            stamps={stamps}
+            stampId={stampId}
           />
         </TabsContent>
       </Tabs>
@@ -345,12 +351,40 @@ function GoalsPanel({ goals, onSave, onRemove }: any) {
 }
 
 /* ---------------- Financeiro ---------------- */
-function PaymentsPanel({ supervisee, payments, billableSessions, onSave, onRemove }: any) {
+function PaymentsPanel({ supervisee, payments, billableSessions, onSave, onRemove, supervisor, stamps = [], stampId }: any) {
   const now = new Date();
   const [month, setMonth] = useState(String(now.getMonth() + 1));
   const [year, setYear] = useState(String(now.getFullYear()));
   const [amount, setAmount] = useState('');
   const [saving, setSaving] = useState(false);
+  const [receiptStamp, setReceiptStamp] = useState<string>(stampId || 'none');
+  const [receiptId, setReceiptId] = useState<string | null>(null);
+
+  useEffect(() => { if (stampId) setReceiptStamp(stampId); }, [stampId]);
+
+  const emitReceipt = async (p: any) => {
+    setReceiptId(p.id);
+    try {
+      const stamp = stamps.find((s: any) => s.id === receiptStamp) || null;
+      await generatePaymentReceiptPdf({
+        therapistName: supervisor?.name || 'Supervisor(a)',
+        therapistCpf: supervisor?.cpf,
+        therapistProfessionalId: supervisor?.registration,
+        therapistCbo: supervisor?.cbo,
+        stamp: stamp ? { ...stamp, cbo: supervisor?.cbo } : null,
+        payerName: supervisee.name,
+        amount: Number(p.amount || 0),
+        serviceName: 'Supervisão clínica',
+        period: `${String(p.reference_month).padStart(2, '0')}/${p.reference_year}`,
+        paymentMethod: p.payment_method || 'PIX/transferência',
+        paymentDate: p.paid_at || p.due_date || new Date().toISOString().slice(0, 10),
+      });
+    } catch (e: any) {
+      toast.error(e?.message || 'Erro ao gerar o recibo');
+    } finally {
+      setReceiptId(null);
+    }
+  };
 
   const suggested =
     supervisee.payment_type === 'mensal'
@@ -423,6 +457,23 @@ function PaymentsPanel({ supervisee, payments, billableSessions, onSave, onRemov
         </Button>
       </Card>
 
+      {stamps.length > 0 && (
+        <Card className="p-4 space-y-1.5 max-w-sm">
+          <Label>Carimbo do recibo</Label>
+          <Select value={receiptStamp} onValueChange={setReceiptStamp}>
+            <SelectTrigger><SelectValue placeholder="Selecione o carimbo" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Sem carimbo</SelectItem>
+              {stamps.map((s: any) => (
+                <SelectItem key={s.id} value={s.id}>
+                  {s.name || s.clinical_area || 'Carimbo'}{s.is_default ? ' (padrão)' : ''}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Card>
+      )}
+
       {payments.length === 0 ? (
         <p className="text-sm text-muted-foreground text-center py-8">Nenhuma cobrança lançada.</p>
       ) : (
@@ -436,6 +487,16 @@ function PaymentsPanel({ supervisee, payments, billableSessions, onSave, onRemov
                 {p.due_date && <p className="text-xs text-muted-foreground">Vencimento: {fmt(p.due_date)}</p>}
               </div>
               <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5"
+                  disabled={receiptId === p.id}
+                  onClick={() => emitReceipt(p)}
+                >
+                  {receiptId === p.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Receipt className="w-4 h-4" />}
+                  Recibo
+                </Button>
                 <Select
                   value={p.status}
                   onValueChange={(v) =>
