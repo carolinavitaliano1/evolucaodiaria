@@ -32,7 +32,8 @@ export function SuperviseeDetail({ supervisee }: { supervisee: Supervisee }) {
   const [sessionDialog, setSessionDialog] = useState(false);
   const [editing, setEditing] = useState<SupervisionSession | null>(null);
   const [supervisor, setSupervisor] = useState<{ name: string; registration?: string }>({ name: '' });
-  const [stamp, setStamp] = useState<{ stamp_image: string | null; signature_image: string | null } | null>(null);
+  const [stamps, setStamps] = useState<any[]>([]);
+  const [stampId, setStampId] = useState<string>('none');
   const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
@@ -40,15 +41,16 @@ export function SuperviseeDetail({ supervisee }: { supervisee: Supervisee }) {
       const { data: auth } = await supabase.auth.getUser();
       const uid = auth.user?.id;
       if (!uid) return;
-      const [{ data: profile }, { data: stamps }] = await Promise.all([
+      const [{ data: profile }, { data: stampRows }] = await Promise.all([
         supabase.from('profiles').select('name, professional_id').eq('user_id', uid).maybeSingle(),
-        supabase.from('stamps').select('stamp_image, signature_image, clinical_area, is_default').eq('user_id', uid).order('is_default', { ascending: false }).limit(1),
+        supabase.from('stamps').select('id, name, stamp_image, signature_image, clinical_area, is_default').eq('user_id', uid).order('is_default', { ascending: false }),
       ]);
       setSupervisor({
         name: (profile as any)?.name || '',
-        registration: (profile as any)?.professional_id || (stamps?.[0] as any)?.clinical_area || undefined,
+        registration: (profile as any)?.professional_id || (stampRows?.[0] as any)?.clinical_area || undefined,
       });
-      if (stamps?.[0]) setStamp(stamps[0] as any);
+      setStamps(stampRows || []);
+      if (stampRows?.[0]) setStampId((stampRows[0] as any).id);
     })();
   }, []);
 
@@ -78,11 +80,12 @@ export function SuperviseeDetail({ supervisee }: { supervisee: Supervisee }) {
     }
     setExporting(true);
     try {
+      const stamp = stamps.find((s) => s.id === stampId);
       generateSupervisionCertificate({
         supervisee,
         sessions,
         supervisorName: supervisor.name,
-        supervisorRegistration: supervisor.registration,
+        supervisorRegistration: stamp?.clinical_area || supervisor.registration,
         stampImage: stamp?.stamp_image,
         signatureImage: stamp?.signature_image,
       });
@@ -193,10 +196,29 @@ export function SuperviseeDetail({ supervisee }: { supervisee: Supervisee }) {
             </Card>
           )}
 
-          <Button onClick={handleCertificate} disabled={exporting} className="gap-2">
-            {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
-            Emitir declaração de supervisão (PDF)
-          </Button>
+          <Card className="p-4 space-y-3">
+            <div className="space-y-1.5 max-w-sm">
+              <Label>Carimbo / assinatura</Label>
+              <Select value={stampId} onValueChange={setStampId}>
+                <SelectTrigger><SelectValue placeholder="Selecione o carimbo" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sem carimbo</SelectItem>
+                  {stamps.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name || s.clinical_area || 'Carimbo'}{s.is_default ? ' (padrão)' : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {stamps.length === 0 && (
+                <p className="text-xs text-muted-foreground">Nenhum carimbo cadastrado no seu perfil.</p>
+              )}
+            </div>
+            <Button onClick={handleCertificate} disabled={exporting} className="gap-2">
+              {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
+              Emitir declaração de supervisão (PDF)
+            </Button>
+          </Card>
         </TabsContent>
 
         {/* ================= FINANCEIRO ================= */}
