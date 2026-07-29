@@ -9,12 +9,13 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
-  Plus, Pencil, Trash2, FileDown, Clock, Target, DollarSign, NotebookPen, Loader2,
+  Plus, Pencil, Trash2, FileDown, Clock, Target, DollarSign, NotebookPen, Loader2, Receipt,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { SupervisionSessionDialog } from './SupervisionSessionDialog';
 import { generateSupervisionCertificate } from './generateSupervisionCertificate';
+import { generatePaymentReceiptPdf } from '@/utils/generatePaymentReceiptPdf';
 import {
   useSupervisionGoals, useSupervisionPayments, useSupervisionSessions,
 } from './useSupervision';
@@ -31,7 +32,7 @@ export function SuperviseeDetail({ supervisee }: { supervisee: Supervisee }) {
 
   const [sessionDialog, setSessionDialog] = useState(false);
   const [editing, setEditing] = useState<SupervisionSession | null>(null);
-  const [supervisor, setSupervisor] = useState<{ name: string; registration?: string }>({ name: '' });
+  const [supervisor, setSupervisor] = useState<{ name: string; registration?: string; cpf?: string | null; cbo?: string | null }>({ name: '' });
   const [stamps, setStamps] = useState<any[]>([]);
   const [stampId, setStampId] = useState<string>('none');
   const [exporting, setExporting] = useState(false);
@@ -42,12 +43,14 @@ export function SuperviseeDetail({ supervisee }: { supervisee: Supervisee }) {
       const uid = auth.user?.id;
       if (!uid) return;
       const [{ data: profile }, { data: stampRows }] = await Promise.all([
-        supabase.from('profiles').select('name, professional_id').eq('user_id', uid).maybeSingle(),
+        supabase.from('profiles').select('name, professional_id, cpf, cbo').eq('user_id', uid).maybeSingle(),
         supabase.from('stamps').select('id, name, stamp_image, signature_image, clinical_area, is_default').eq('user_id', uid).order('is_default', { ascending: false }),
       ]);
       setSupervisor({
         name: (profile as any)?.name || '',
         registration: (profile as any)?.professional_id || (stampRows?.[0] as any)?.clinical_area || undefined,
+        cpf: (profile as any)?.cpf || null,
+        cbo: (profile as any)?.cbo || null,
       });
       setStamps(stampRows || []);
       if (stampRows?.[0]) setStampId((stampRows[0] as any).id);
@@ -229,6 +232,9 @@ export function SuperviseeDetail({ supervisee }: { supervisee: Supervisee }) {
             billableSessions={stats.billable}
             onSave={savePayment}
             onRemove={removePayment}
+            supervisor={supervisor}
+            stamps={stamps}
+            stampId={stampId}
           />
         </TabsContent>
       </Tabs>
