@@ -351,12 +351,40 @@ function GoalsPanel({ goals, onSave, onRemove }: any) {
 }
 
 /* ---------------- Financeiro ---------------- */
-function PaymentsPanel({ supervisee, payments, billableSessions, onSave, onRemove }: any) {
+function PaymentsPanel({ supervisee, payments, billableSessions, onSave, onRemove, supervisor, stamps = [], stampId }: any) {
   const now = new Date();
   const [month, setMonth] = useState(String(now.getMonth() + 1));
   const [year, setYear] = useState(String(now.getFullYear()));
   const [amount, setAmount] = useState('');
   const [saving, setSaving] = useState(false);
+  const [receiptStamp, setReceiptStamp] = useState<string>(stampId || 'none');
+  const [receiptId, setReceiptId] = useState<string | null>(null);
+
+  useEffect(() => { if (stampId) setReceiptStamp(stampId); }, [stampId]);
+
+  const emitReceipt = async (p: any) => {
+    setReceiptId(p.id);
+    try {
+      const stamp = stamps.find((s: any) => s.id === receiptStamp) || null;
+      await generatePaymentReceiptPdf({
+        therapistName: supervisor?.name || 'Supervisor(a)',
+        therapistCpf: supervisor?.cpf,
+        therapistProfessionalId: supervisor?.registration,
+        therapistCbo: supervisor?.cbo,
+        stamp: stamp ? { ...stamp, cbo: supervisor?.cbo } : null,
+        payerName: supervisee.name,
+        amount: Number(p.amount || 0),
+        serviceName: 'Supervisão clínica',
+        period: `${String(p.reference_month).padStart(2, '0')}/${p.reference_year}`,
+        paymentMethod: p.payment_method || 'PIX/transferência',
+        paymentDate: p.paid_at || p.due_date || new Date().toISOString().slice(0, 10),
+      });
+    } catch (e: any) {
+      toast.error(e?.message || 'Erro ao gerar o recibo');
+    } finally {
+      setReceiptId(null);
+    }
+  };
 
   const suggested =
     supervisee.payment_type === 'mensal'
@@ -429,6 +457,23 @@ function PaymentsPanel({ supervisee, payments, billableSessions, onSave, onRemov
         </Button>
       </Card>
 
+      {stamps.length > 0 && (
+        <Card className="p-4 space-y-1.5 max-w-sm">
+          <Label>Carimbo do recibo</Label>
+          <Select value={receiptStamp} onValueChange={setReceiptStamp}>
+            <SelectTrigger><SelectValue placeholder="Selecione o carimbo" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Sem carimbo</SelectItem>
+              {stamps.map((s: any) => (
+                <SelectItem key={s.id} value={s.id}>
+                  {s.name || s.clinical_area || 'Carimbo'}{s.is_default ? ' (padrão)' : ''}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Card>
+      )}
+
       {payments.length === 0 ? (
         <p className="text-sm text-muted-foreground text-center py-8">Nenhuma cobrança lançada.</p>
       ) : (
@@ -442,6 +487,16 @@ function PaymentsPanel({ supervisee, payments, billableSessions, onSave, onRemov
                 {p.due_date && <p className="text-xs text-muted-foreground">Vencimento: {fmt(p.due_date)}</p>}
               </div>
               <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5"
+                  disabled={receiptId === p.id}
+                  onClick={() => emitReceipt(p)}
+                >
+                  {receiptId === p.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Receipt className="w-4 h-4" />}
+                  Recibo
+                </Button>
                 <Select
                   value={p.status}
                   onValueChange={(v) =>
