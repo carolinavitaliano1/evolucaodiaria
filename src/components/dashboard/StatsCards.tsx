@@ -13,6 +13,7 @@ import { startOfMonth } from 'date-fns';
 import { calculateClinicMonthlyRevenue, type EvolutionLike } from '@/utils/financialHelpers';
 import { type GroupBillingMap, type GroupMemberPaymentMap } from '@/utils/groupFinancial';
 import { loadAppointmentValueMap } from '@/utils/appointmentValueMap';
+import { useSupervisionRevenue } from '@/modules/supervision/useSupervisionRevenue';
 
 export function StatsCards() {
   const { clinics, patients: allPatients, appointments, evolutions: allEvolutions, clinicPackages } = useApp();
@@ -49,6 +50,7 @@ export function StatsCards() {
 
   const currentMonth = new Date().getMonth();
   const currentYear = new Date().getFullYear();
+  const { revenue: supervisionRevenue } = useSupervisionRevenue(currentMonth, currentYear);
 
   const loadPrivateData = async () => {
     if (!user) return;
@@ -191,7 +193,7 @@ export function StatsCards() {
     return total;
   })();
 
-  const monthlyRevenue = clinicMonthlyRevenue + privateMonthlyRevenue;
+  const monthlyRevenue = clinicMonthlyRevenue + privateMonthlyRevenue + supervisionRevenue;
 
   const stats = [
     {
