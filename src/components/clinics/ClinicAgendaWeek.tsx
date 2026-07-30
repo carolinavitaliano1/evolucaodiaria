@@ -1,8 +1,9 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { Calendar, ChevronLeft, ChevronRight, Plus, Filter, Trash2, CalendarOff, Bell, Settings2 } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, Plus, Filter, Trash2, CalendarOff, Bell, Settings2, Download, FileText, FileSpreadsheet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { useApp } from '@/contexts/AppContext';
@@ -18,6 +19,7 @@ import { ptBR } from 'date-fns/locale';
 import { isPatientActiveOn } from '@/utils/dateHelpers';
 import { AppointmentDialog, type AppointmentDraft } from './AppointmentDialog';
 import { toast } from 'sonner';
+import { exportClinicAgendaPdf, exportClinicAgendaExcel, type AgendaExportRow } from '@/utils/exportClinicAgenda';
 
 interface ClinicAgendaWeekProps {
   clinicId: string;
@@ -66,7 +68,7 @@ interface AppointmentRow {
 const DAYS_PT = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
 
 export function ClinicAgendaWeek({ clinicId, onOpenSettings }: ClinicAgendaWeekProps) {
-  const { patients } = useApp();
+  const { patients, clinics } = useApp();
   const { user } = useAuth();
   const { members } = useClinicOrg(clinicId);
   const { getBlockForDate, load: reloadBlocks } = useCalendarBlocks();
@@ -321,6 +323,54 @@ export function ClinicAgendaWeek({ clinicId, onOpenSettings }: ClinicAgendaWeekP
 
   const filterCount = statusFilter.length + therapistFilter.length + (patientSearch ? 1 : 0);
 
+  // ===== Exportação da agenda =====
+  const clinicName = clinics.find(c => c.id === clinicId)?.name || 'Clínica';
+  const periodLabel = `${format(weekStart, 'dd/MM/yyyy')} a ${format(addDays(weekStart, 6), 'dd/MM/yyyy')}`;
+  const filtersLabel = [
+    statusFilter.length ? `Status: ${statusFilter.map(statusLabel).join(', ')}` : '',
+    therapistFilter.length ? `Profissionais: ${therapistFilter.map(id => memberOptions.find(m => m.userId === id)?.name || '').filter(Boolean).join(', ')}` : '',
+    patientSearch ? `Paciente: "${patientSearch}"` : '',
+  ].filter(Boolean).join(' | ');
+
+  const buildExportRows = (): AgendaExportRow[] => {
+    const rows: AgendaExportRow[] = [];
+    weekDays.forEach(d => {
+      const dStr = format(d, 'yyyy-MM-dd');
+      (visibleByDay[dStr] || []).forEach(a => {
+        rows.push({
+          date: dStr,
+          time: (a.time || '').slice(0, 5),
+          endTime: a.end_time ? a.end_time.slice(0, 5) : null,
+          patient: patientName(a.patient_id),
+          therapist: a.therapist_user_id
+            ? (memberOptions.find(m => m.userId === a.therapist_user_id)?.name || null)
+            : null,
+          status: statusLabel(a.status),
+          room: a.room,
+          convenio: a.convenio,
+          notes: a.notes,
+        });
+      });
+    });
+    return rows;
+  };
+
+  const handleExport = (kind: 'pdf' | 'excel') => {
+    const rows = buildExportRows();
+    if (rows.length === 0) {
+      toast.info('Nenhum agendamento nesta semana para exportar.');
+      return;
+    }
+    const meta = { clinicName, periodLabel, filtersLabel: filtersLabel || undefined, rows };
+    try {
+      if (kind === 'pdf') exportClinicAgendaPdf(meta);
+      else exportClinicAgendaExcel(meta);
+      toast.success(`Agenda exportada em ${kind === 'pdf' ? 'PDF' : 'Excel'}.`);
+    } catch (e: any) {
+      toast.error('Erro ao exportar: ' + (e?.message || 'falha desconhecida'));
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Filtros + botão novo */}
@@ -411,6 +461,33 @@ export function ClinicAgendaWeek({ clinicId, onOpenSettings }: ClinicAgendaWeekP
             <Button size="sm" variant="outline" className="gap-1.5" onClick={() => { setEventDialogDate(new Date()); setEventDialogOpen(true); }}>
               <Bell className="w-4 h-4" /> Evento
             </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant="outline" className="gap-1.5">
+                  <Download className="w-4 h-4" /> Exportar
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-60">
+                <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+                  Semana {periodLabel}
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => handleExport('pdf')} className="gap-2">
+                  <FileText className="w-4 h-4 text-primary" />
+                  <div className="flex flex-col">
+                    <span className="text-sm">Exportar PDF</span>
+                    <span className="text-[11px] text-muted-foreground">Layout por dia, pronto para imprimir</span>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport('excel')} className="gap-2">
+                  <FileSpreadsheet className="w-4 h-4 text-success" />
+                  <div className="flex flex-col">
+                    <span className="text-sm">Exportar Excel</span>
+                    <span className="text-[11px] text-muted-foreground">Planilha .xlsx com totais por status</span>
+                  </div>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button size="sm" className="gap-1.5" onClick={openNew}>
               <Plus className="w-4 h-4" /> Novo Agendamento
             </Button>
