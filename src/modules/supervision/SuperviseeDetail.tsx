@@ -347,40 +347,6 @@ function GoalsPanel({ goals, onSave, onRemove }: any) {
           ))}
         </div>
       )}
-
-      <Dialog open={!!receiptTarget} onOpenChange={(o) => !o && setReceiptTarget(null)}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>Local e data do recibo</DialogTitle></DialogHeader>
-          <div className="space-y-3">
-            <div className="space-y-1.5">
-              <Label>Cidade</Label>
-              <Input
-                placeholder="Ex.: Natal/RN"
-                value={receiptCity}
-                onChange={(e) => setReceiptCity(e.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Data</Label>
-              <Input type="date" value={receiptDate} onChange={(e) => setReceiptDate(e.target.value)} />
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Deixe a cidade em branco para imprimir a linha em branco para preenchimento à mão.
-            </p>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setReceiptTarget(null)}>Cancelar</Button>
-            <Button
-              disabled={!!receiptId}
-              onClick={() => receiptTarget && emitReceipt(receiptTarget)}
-              className="gap-1.5"
-            >
-              {receiptId ? <Loader2 className="w-4 h-4 animate-spin" /> : <Receipt className="w-4 h-4" />}
-              Gerar recibo
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
@@ -566,6 +532,40 @@ function PaymentsPanel({ supervisee, payments, billableSessions, onSave, onRemov
           ))}
         </div>
       )}
+
+      <Dialog open={!!receiptTarget} onOpenChange={(o) => !o && setReceiptTarget(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Local e data do recibo</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label>Cidade</Label>
+              <Input
+                placeholder="Ex.: Natal/RN"
+                value={receiptCity}
+                onChange={(e) => setReceiptCity(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Data</Label>
+              <Input type="date" value={receiptDate} onChange={(e) => setReceiptDate(e.target.value)} />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Deixe a cidade em branco para imprimir a linha em branco para preenchimento à mão.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReceiptTarget(null)}>Cancelar</Button>
+            <Button
+              disabled={!!receiptId}
+              onClick={() => receiptTarget && emitReceipt(receiptTarget)}
+              className="gap-1.5"
+            >
+              {receiptId ? <Loader2 className="w-4 h-4 animate-spin" /> : <Receipt className="w-4 h-4" />}
+              Gerar recibo
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
