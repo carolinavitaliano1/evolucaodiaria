@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   Plus, Pencil, Trash2, FileDown, Clock, Target, DollarSign, NotebookPen, Loader2, Receipt,
 } from 'lucide-react';
@@ -359,19 +360,31 @@ function PaymentsPanel({ supervisee, payments, billableSessions, onSave, onRemov
   const [saving, setSaving] = useState(false);
   const [receiptStamp, setReceiptStamp] = useState<string>(stampId || 'none');
   const [receiptId, setReceiptId] = useState<string | null>(null);
+  const [receiptTarget, setReceiptTarget] = useState<any | null>(null);
+  const [receiptCity, setReceiptCity] = useState('');
+  const [receiptDate, setReceiptDate] = useState(new Date().toISOString().slice(0, 10));
 
   useEffect(() => { if (stampId) setReceiptStamp(stampId); }, [stampId]);
+
+  const openReceiptDialog = (p: any) => {
+    setReceiptTarget(p);
+    setReceiptDate(p.paid_at || p.due_date || new Date().toISOString().slice(0, 10));
+  };
 
   const emitReceipt = async (p: any) => {
     setReceiptId(p.id);
     try {
       const stamp = stamps.find((s: any) => s.id === receiptStamp) || null;
+      const location = receiptCity.trim()
+        ? `${receiptCity.trim()}, ${fmt(receiptDate)}`
+        : null;
       await generatePaymentReceiptPdf({
         therapistName: supervisor?.name || 'Supervisor(a)',
         therapistCpf: supervisor?.cpf,
         therapistProfessionalId: supervisor?.registration,
         therapistCbo: supervisor?.cbo,
         stamp: stamp ? { ...stamp, cbo: supervisor?.cbo } : null,
+        location,
         payerName: supervisee.name,
         amount: Number(p.amount || 0),
         serviceName: 'Supervisão clínica',
@@ -379,6 +392,7 @@ function PaymentsPanel({ supervisee, payments, billableSessions, onSave, onRemov
         paymentMethod: p.payment_method || 'PIX/transferência',
         paymentDate: p.paid_at || p.due_date || new Date().toISOString().slice(0, 10),
       });
+      setReceiptTarget(null);
     } catch (e: any) {
       toast.error(e?.message || 'Erro ao gerar o recibo');
     } finally {
@@ -492,7 +506,7 @@ function PaymentsPanel({ supervisee, payments, billableSessions, onSave, onRemov
                   variant="outline"
                   className="gap-1.5"
                   disabled={receiptId === p.id}
-                  onClick={() => emitReceipt(p)}
+                  onClick={() => openReceiptDialog(p)}
                 >
                   {receiptId === p.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Receipt className="w-4 h-4" />}
                   Recibo
@@ -518,6 +532,40 @@ function PaymentsPanel({ supervisee, payments, billableSessions, onSave, onRemov
           ))}
         </div>
       )}
+
+      <Dialog open={!!receiptTarget} onOpenChange={(o) => !o && setReceiptTarget(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Local e data do recibo</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label>Cidade</Label>
+              <Input
+                placeholder="Ex.: Natal/RN"
+                value={receiptCity}
+                onChange={(e) => setReceiptCity(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Data</Label>
+              <Input type="date" value={receiptDate} onChange={(e) => setReceiptDate(e.target.value)} />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Deixe a cidade em branco para imprimir a linha em branco para preenchimento à mão.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReceiptTarget(null)}>Cancelar</Button>
+            <Button
+              disabled={!!receiptId}
+              onClick={() => receiptTarget && emitReceipt(receiptTarget)}
+              className="gap-1.5"
+            >
+              {receiptId ? <Loader2 className="w-4 h-4 animate-spin" /> : <Receipt className="w-4 h-4" />}
+              Gerar recibo
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
