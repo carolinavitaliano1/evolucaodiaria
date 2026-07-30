@@ -360,19 +360,31 @@ function PaymentsPanel({ supervisee, payments, billableSessions, onSave, onRemov
   const [saving, setSaving] = useState(false);
   const [receiptStamp, setReceiptStamp] = useState<string>(stampId || 'none');
   const [receiptId, setReceiptId] = useState<string | null>(null);
+  const [receiptTarget, setReceiptTarget] = useState<any | null>(null);
+  const [receiptCity, setReceiptCity] = useState('');
+  const [receiptDate, setReceiptDate] = useState(new Date().toISOString().slice(0, 10));
 
   useEffect(() => { if (stampId) setReceiptStamp(stampId); }, [stampId]);
+
+  const openReceiptDialog = (p: any) => {
+    setReceiptTarget(p);
+    setReceiptDate(p.paid_at || p.due_date || new Date().toISOString().slice(0, 10));
+  };
 
   const emitReceipt = async (p: any) => {
     setReceiptId(p.id);
     try {
       const stamp = stamps.find((s: any) => s.id === receiptStamp) || null;
+      const location = receiptCity.trim()
+        ? `${receiptCity.trim()}, ${fmt(receiptDate)}`
+        : null;
       await generatePaymentReceiptPdf({
         therapistName: supervisor?.name || 'Supervisor(a)',
         therapistCpf: supervisor?.cpf,
         therapistProfessionalId: supervisor?.registration,
         therapistCbo: supervisor?.cbo,
         stamp: stamp ? { ...stamp, cbo: supervisor?.cbo } : null,
+        location,
         payerName: supervisee.name,
         amount: Number(p.amount || 0),
         serviceName: 'Supervisão clínica',
@@ -380,6 +392,7 @@ function PaymentsPanel({ supervisee, payments, billableSessions, onSave, onRemov
         paymentMethod: p.payment_method || 'PIX/transferência',
         paymentDate: p.paid_at || p.due_date || new Date().toISOString().slice(0, 10),
       });
+      setReceiptTarget(null);
     } catch (e: any) {
       toast.error(e?.message || 'Erro ao gerar o recibo');
     } finally {
@@ -493,7 +506,7 @@ function PaymentsPanel({ supervisee, payments, billableSessions, onSave, onRemov
                   variant="outline"
                   className="gap-1.5"
                   disabled={receiptId === p.id}
-                  onClick={() => emitReceipt(p)}
+                  onClick={() => openReceiptDialog(p)}
                 >
                   {receiptId === p.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Receipt className="w-4 h-4" />}
                   Recibo
