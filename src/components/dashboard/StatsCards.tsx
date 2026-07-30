@@ -50,6 +50,7 @@ export function StatsCards() {
 
   const currentMonth = new Date().getMonth();
   const currentYear = new Date().getFullYear();
+  const { revenue: supervisionRevenue } = useSupervisionRevenue(currentMonth, currentYear);
 
   const loadPrivateData = async () => {
     if (!user) return;
